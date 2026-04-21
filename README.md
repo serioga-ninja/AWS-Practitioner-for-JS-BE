@@ -4,14 +4,18 @@ This is a blank project for CDK development with TypeScript.
 
 The `cdk.json` file tells the CDK Toolkit how to execute your app.
 
-## Product Service endpoint
+## Product Service endpoints
 
-- Method: `GET`
-- Path: `/products`
-- Lambda: `getProductsList`
-- Response: JSON array of mock products from `lib/product-service/mock-products.ts`
+- `GET /products`
+  - Lambda: `getProductsList`
+  - Response: JSON array of mock products from `lib/product-service/mock-products.ts`
+  - Used by frontend PLP
+- `GET /products/{productId}`
+  - Lambda: `getProductsById`
+  - Response: one matched product from the same mock data array
+  - Returns `404` when product is not found
 
-After deploy, use the `ProductsApiUrl` CloudFormation output as the frontend PLP API URL.
+After deploy, use the `ProductsApiUrl` CloudFormation output as the base URL.
 
 ## Useful commands
 

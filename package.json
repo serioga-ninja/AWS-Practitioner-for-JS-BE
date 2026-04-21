@@ -10,7 +10,9 @@
     "test": "jest",
     "cdk": "cdk",
     "cdk:bootstrap": "npx aws-cdk bootstrap",
-    "cdk:deploy": "npx aws-cdk deploy"
+    "cdk:deploy:all": "npx aws-cdk deploy --all",
+    "cdk:deploy": "npx aws-cdk deploy",
+    "cdk:destroy:all": "npx aws-cdk destroy --all"
   },
   "devDependencies": {
     "@types/jest": "^30",
