@@ -41,6 +41,10 @@ export class ProductServiceStack extends cdk.Stack {
       code: lambda.Code.fromAsset(path.join(__dirname, './')),
       memorySize: 128,
       timeout: cdk.Duration.seconds(5),
+      environment: {
+        PRODUCTS_TABLE_NAME: this.productsTable.tableName,
+        STOCK_TABLE_NAME: this.stockTable.tableName,
+      },
     });
 
     const getProductsById = new lambda.Function(this, 'getProductsById', {
@@ -50,7 +54,17 @@ export class ProductServiceStack extends cdk.Stack {
       code: lambda.Code.fromAsset(path.join(__dirname, './')),
       memorySize: 128,
       timeout: cdk.Duration.seconds(5),
+      environment: {
+        PRODUCTS_TABLE_NAME: this.productsTable.tableName,
+        STOCK_TABLE_NAME: this.stockTable.tableName,
+      },
     });
+
+    // Grant Lambda functions read access to DynamoDB tables
+    this.productsTable.grantReadData(getProductsList);
+    this.productsTable.grantReadData(getProductsById);
+    this.stockTable.grantReadData(getProductsList);
+    this.stockTable.grantReadData(getProductsById);
 
     const api = new apigateway.RestApi(this, 'ProductServiceApi', {
       restApiName: 'Product Service API',
