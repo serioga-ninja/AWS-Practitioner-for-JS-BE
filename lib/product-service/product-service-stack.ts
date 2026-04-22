@@ -60,9 +60,22 @@ export class ProductServiceStack extends cdk.Stack {
       },
     });
 
+    const createProduct = new lambda.Function(this, 'createProduct', {
+      functionName: 'createProduct',
+      runtime: lambda.Runtime.NODEJS_20_X,
+      handler: 'create-product-handler.main',
+      code: lambda.Code.fromAsset(path.join(__dirname, './')),
+      memorySize: 128,
+      timeout: cdk.Duration.seconds(5),
+      environment: {
+        PRODUCTS_TABLE_NAME: this.productsTable.tableName,
+      },
+    });
+
     // Grant Lambda functions read access to DynamoDB tables
     this.productsTable.grantReadData(getProductsList);
     this.productsTable.grantReadData(getProductsById);
+    this.productsTable.grantWriteData(createProduct);
     this.stockTable.grantReadData(getProductsList);
     this.stockTable.grantReadData(getProductsById);
 
@@ -70,19 +83,20 @@ export class ProductServiceStack extends cdk.Stack {
       restApiName: 'Product Service API',
       defaultCorsPreflightOptions: {
         allowOrigins: apigateway.Cors.ALL_ORIGINS,
-        allowMethods: ['GET', 'OPTIONS'],
+        allowMethods: ['GET', 'POST', 'OPTIONS'],
       },
     });
 
     const productsResource = api.root.addResource('products');
     productsResource.addMethod('GET', new apigateway.LambdaIntegration(getProductsList));
+    productsResource.addMethod('POST', new apigateway.LambdaIntegration(createProduct));
     productsResource
       .addResource('{productId}')
       .addMethod('GET', new apigateway.LambdaIntegration(getProductsById));
 
     new cdk.CfnOutput(this, 'ProductsApiUrl', {
       value: `${api.url}products`,
-      description: 'GET endpoint for Product List Page integration',
+      description: 'Products resource endpoint (GET list, POST create)',
     });
 
     new cdk.CfnOutput(this, 'ProductsTableName', {

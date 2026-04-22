@@ -8,14 +8,18 @@ The `cdk.json` file tells the CDK Toolkit how to execute your app.
 
 - `GET /products`
   - Lambda: `getProductsList`
-  - Response: JSON array of mock products from `lib/product-service/mock-products.ts`
+  - Response: JSON array of products joined with stock from DynamoDB
   - Used by frontend PLP
+- `POST /products`
+  - Lambda: `createProduct`
+  - Request body: `{ "title": string, "description": string, "price": number }`
+  - Response: created product item from DynamoDB with generated `id`
 - `GET /products/{productId}`
   - Lambda: `getProductsById`
-  - Response: one matched product from the same mock data array
+  - Response: one matched product joined with stock from DynamoDB
   - Returns `404` when product is not found
 
-After deploy, use the `ProductsApiUrl` CloudFormation output as the base URL.
+After deploy, save the `ProductsApiUrl` CloudFormation output and include it in your PR description.
 
 ## Useful commands
 
