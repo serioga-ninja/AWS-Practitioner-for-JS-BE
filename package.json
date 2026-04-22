@@ -1,6 +1,6 @@
 {
   "name": "aws-practitioner-for-js-be",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "bin": {
     "aws-practitioner-for-js-be": "bin/aws-practitioner-for-js-be.js"
   },
