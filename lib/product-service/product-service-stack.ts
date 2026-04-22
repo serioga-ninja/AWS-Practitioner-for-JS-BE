@@ -69,6 +69,7 @@ export class ProductServiceStack extends cdk.Stack {
       timeout: cdk.Duration.seconds(5),
       environment: {
         PRODUCTS_TABLE_NAME: this.productsTable.tableName,
+        STOCK_TABLE_NAME: this.stockTable.tableName,
       },
     });
 
@@ -78,6 +79,7 @@ export class ProductServiceStack extends cdk.Stack {
     this.productsTable.grantWriteData(createProduct);
     this.stockTable.grantReadData(getProductsList);
     this.stockTable.grantReadData(getProductsById);
+    this.stockTable.grantWriteData(createProduct);
 
     const api = new apigateway.RestApi(this, 'ProductServiceApi', {
       restApiName: 'Product Service API',

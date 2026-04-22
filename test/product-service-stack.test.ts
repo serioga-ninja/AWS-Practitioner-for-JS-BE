@@ -1,5 +1,5 @@
 import * as cdk from 'aws-cdk-lib';
-import { Template } from 'aws-cdk-lib/assertions';
+import { Match, Template } from 'aws-cdk-lib/assertions';
 import { ProductServiceStack } from '../lib/product-service/product-service-stack';
 
 describe('ProductServiceStack', () => {
@@ -24,6 +24,12 @@ describe('ProductServiceStack', () => {
       FunctionName: 'createProduct',
       Handler: 'create-product-handler.main',
       Runtime: 'nodejs20.x',
+      Environment: {
+        Variables: Match.objectLike({
+          PRODUCTS_TABLE_NAME: Match.anyValue(),
+          STOCK_TABLE_NAME: Match.anyValue(),
+        }),
+      },
     });
 
     template.hasResourceProperties('AWS::ApiGateway::Resource', {

@@ -8,8 +8,10 @@ const docClient = DynamoDBDocumentClient.from(dynamoDBClient);
 const PRODUCTS_TABLE_NAME = process.env.PRODUCTS_TABLE_NAME || 'products';
 const STOCK_TABLE_NAME = process.env.STOCK_TABLE_NAME || 'stock';
 
-export async function main() {
+export async function main(event?: unknown) {
   try {
+    console.log('Incoming getProductsList request', { event });
+
     // Fetch all products
     const productsResult = await docClient.send(
       new ScanCommand({

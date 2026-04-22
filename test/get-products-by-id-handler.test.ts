@@ -67,5 +67,18 @@ describe('getProductsById handler', () => {
     expect(response.statusCode).toBe(404);
     expect(JSON.parse(response.body)).toEqual({ message: 'Product not found' });
   });
+
+  test('returns 500 when dynamodb read fails', async () => {
+    mockSend.mockRejectedValueOnce(new Error('DynamoDB unavailable'));
+
+    const response = await main({
+      pathParameters: {
+        productId: '1',
+      },
+    });
+
+    expect(response.statusCode).toBe(500);
+    expect(JSON.parse(response.body)).toEqual({ message: 'Error fetching product' });
+  });
 });
 

@@ -15,20 +15,22 @@ type PathEvent = {
 };
 
 export async function main(event: PathEvent) {
-  const productId = event.pathParameters?.productId;
-
-  if (!productId) {
-    return {
-      statusCode: 400,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': '*',
-      },
-      body: JSON.stringify({ message: 'productId path parameter is required' }),
-    };
-  }
-
   try {
+    console.log('Incoming getProductsById request', { event });
+
+    const productId = event?.pathParameters?.productId;
+
+    if (!productId) {
+      return {
+        statusCode: 400,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Headers': '*',
+        },
+        body: JSON.stringify({ message: 'productId path parameter is required' }),
+      };
+    }
+
     // Fetch product from products table
     const productResult = await docClient.send(
       new GetCommand({
