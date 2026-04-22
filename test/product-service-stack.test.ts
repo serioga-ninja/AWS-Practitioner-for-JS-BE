@@ -1,9 +1,9 @@
 import * as cdk from 'aws-cdk-lib';
-import { Template } from 'aws-cdk-lib/assertions';
+import { Match, Template } from 'aws-cdk-lib/assertions';
 import { ProductServiceStack } from '../lib/product-service/product-service-stack';
 
 describe('ProductServiceStack', () => {
-  test('creates products list and product-by-id endpoints', () => {
+  test('creates products list, create product and product-by-id endpoints', () => {
     const app = new cdk.App();
     const stack = new ProductServiceStack(app, 'ProductServiceStackTest');
     const template = Template.fromStack(stack);
@@ -20,6 +20,18 @@ describe('ProductServiceStack', () => {
       Runtime: 'nodejs20.x',
     });
 
+    template.hasResourceProperties('AWS::Lambda::Function', {
+      FunctionName: 'createProduct',
+      Handler: 'create-product-handler.main',
+      Runtime: 'nodejs20.x',
+      Environment: {
+        Variables: Match.objectLike({
+          PRODUCTS_TABLE_NAME: Match.anyValue(),
+          STOCK_TABLE_NAME: Match.anyValue(),
+        }),
+      },
+    });
+
     template.hasResourceProperties('AWS::ApiGateway::Resource', {
       PathPart: 'products',
     });
@@ -30,6 +42,10 @@ describe('ProductServiceStack', () => {
 
     template.hasResourceProperties('AWS::ApiGateway::Method', {
       HttpMethod: 'GET',
+    });
+
+    template.hasResourceProperties('AWS::ApiGateway::Method', {
+      HttpMethod: 'POST',
     });
   });
 });
