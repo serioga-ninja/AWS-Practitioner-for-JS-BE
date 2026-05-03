@@ -3,12 +3,14 @@ import * as apigateway from 'aws-cdk-lib/aws-apigateway';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as s3deploy from 'aws-cdk-lib/aws-s3-deployment';
+import * as s3n from 'aws-cdk-lib/aws-s3-notifications';
 import * as path from 'path';
 import { Construct } from 'constructs';
 
 export class ImportServiceStack extends cdk.Stack {
   public readonly importBucket: s3.Bucket;
   public readonly importProductsFile: lambda.Function;
+  public readonly importFileParser: lambda.Function;
 
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
 	super(scope, id, props);
@@ -41,6 +43,22 @@ export class ImportServiceStack extends cdk.Stack {
 	});
 
 	this.importBucket.grantPut(this.importProductsFile, 'uploaded/*');
+
+	this.importFileParser = new lambda.Function(this, 'ImportFileParserLambda', {
+	  functionName: 'importFileParser',
+	  runtime: lambda.Runtime.NODEJS_20_X,
+	  handler: 'import-file-parser-handler.main',
+	  code: lambda.Code.fromAsset(path.join(__dirname, './')),
+	  memorySize: 128,
+	  timeout: cdk.Duration.seconds(10),
+	});
+
+	this.importBucket.grantRead(this.importFileParser, 'uploaded/*');
+	this.importBucket.addEventNotification(
+	  s3.EventType.OBJECT_CREATED,
+	  new s3n.LambdaDestination(this.importFileParser),
+	  { prefix: 'uploaded/' }
+	);
 
 	const api = new apigateway.RestApi(this, 'ImportServiceApi', {
 	  restApiName: 'Import Service API',
