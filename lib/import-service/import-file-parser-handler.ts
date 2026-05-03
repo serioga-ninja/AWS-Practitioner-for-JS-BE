@@ -1,4 +1,9 @@
-import { GetObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import {
+  CopyObjectCommand,
+  DeleteObjectCommand,
+  GetObjectCommand,
+  S3Client,
+} from '@aws-sdk/client-s3';
 import type { S3Event } from 'aws-lambda';
 import csv from 'csv-parser';
 import { Readable } from 'stream';
@@ -21,6 +26,45 @@ function parseCsvStream(stream: Readable, key: string) {
   });
 }
 
+function getParsedKey(objectKey: string) {
+  if (objectKey.startsWith('uploaded/')) {
+    return objectKey.replace(/^uploaded\//, 'parsed/');
+  }
+
+  return `parsed/${objectKey.split('/').pop() || objectKey}`;
+}
+
+function encodeCopySource(bucketName: string, objectKey: string) {
+  return `${bucketName}/${objectKey
+    .split('/')
+    .map((part) => encodeURIComponent(part))
+    .join('/')}`;
+}
+
+async function moveObjectToParsed(bucketName: string, objectKey: string) {
+  const parsedKey = getParsedKey(objectKey);
+
+  await s3Client.send(
+    new CopyObjectCommand({
+      Bucket: bucketName,
+      CopySource: encodeCopySource(bucketName, objectKey),
+      Key: parsedKey,
+    })
+  );
+
+  await s3Client.send(
+    new DeleteObjectCommand({
+      Bucket: bucketName,
+      Key: objectKey,
+    })
+  );
+
+  console.log('Moved file to parsed folder', {
+    sourceKey: objectKey,
+    destinationKey: parsedKey,
+  });
+}
+
 export async function main(event: S3Event) {
   for (const record of event.Records) {
     const bucketName = record.s3.bucket.name;
@@ -38,5 +82,6 @@ export async function main(event: S3Event) {
     }
 
     await parseCsvStream(result.Body, objectKey);
+    await moveObjectToParsed(bucketName, objectKey);
   }
 }
