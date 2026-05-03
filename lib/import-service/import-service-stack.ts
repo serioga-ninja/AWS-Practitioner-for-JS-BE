@@ -20,6 +20,13 @@ export class ImportServiceStack extends cdk.Stack {
 	  autoDeleteObjects: true,
 	  blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
 	  enforceSSL: true,
+	  cors: [
+		{
+		  allowedMethods: [s3.HttpMethods.PUT],
+		  allowedOrigins: ['*'],
+		  allowedHeaders: ['*'],
+		},
+	  ],
 	});
 
 	// S3 has logical prefixes, so create a placeholder object under uploaded/.

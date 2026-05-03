@@ -1,6 +1,6 @@
 import { GetObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import type { S3Event } from 'aws-lambda';
-import * as csv from 'csv-parser';
+import csv from 'csv-parser';
 import { Readable } from 'stream';
 
 const s3Client = new S3Client({});
@@ -40,4 +40,3 @@ export async function main(event: S3Event) {
     await parseCsvStream(result.Body, objectKey);
   }
 }
-
