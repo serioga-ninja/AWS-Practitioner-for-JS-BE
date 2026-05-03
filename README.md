@@ -19,6 +19,13 @@ The `cdk.json` file tells the CDK Toolkit how to execute your app.
   - Response: one matched product joined with stock from DynamoDB
   - Returns `404` when product is not found
 
+## Import Service endpoint
+
+- `GET /import?fileName={name}.csv`
+  - Lambda: `importProductsFile`
+  - Response: JSON object with pre-signed URL: `{ "signedUrl": "..." }`
+  - Signed URL uploads to: `uploaded/{fileName}` in the import S3 bucket
+
 After deploy, save the `ProductsApiUrl` CloudFormation output and include it in your PR description.
 
 ## Useful commands

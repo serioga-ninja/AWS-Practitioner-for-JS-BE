@@ -1,10 +1,14 @@
 import * as cdk from 'aws-cdk-lib';
+import * as apigateway from 'aws-cdk-lib/aws-apigateway';
+import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as s3deploy from 'aws-cdk-lib/aws-s3-deployment';
+import * as path from 'path';
 import { Construct } from 'constructs';
 
 export class ImportServiceStack extends cdk.Stack {
   public readonly importBucket: s3.Bucket;
+  public readonly importProductsFile: lambda.Function;
 
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
 	super(scope, id, props);
@@ -23,6 +27,33 @@ export class ImportServiceStack extends cdk.Stack {
 	  prune: false,
 	});
 
+	this.importProductsFile = new lambda.Function(this, 'ImportProductsFileLambda', {
+	  functionName: 'importProductsFile',
+	  runtime: lambda.Runtime.NODEJS_20_X,
+	  handler: 'import-products-file-handler.main',
+	  code: lambda.Code.fromAsset(path.join(__dirname, './')),
+	  memorySize: 128,
+	  timeout: cdk.Duration.seconds(5),
+	  environment: {
+		IMPORT_BUCKET_NAME: this.importBucket.bucketName,
+		UPLOADED_PREFIX: 'uploaded/',
+	  },
+	});
+
+	this.importBucket.grantPut(this.importProductsFile, 'uploaded/*');
+
+	const api = new apigateway.RestApi(this, 'ImportServiceApi', {
+	  restApiName: 'Import Service API',
+	  defaultCorsPreflightOptions: {
+		allowOrigins: apigateway.Cors.ALL_ORIGINS,
+		allowMethods: ['GET', 'OPTIONS'],
+	  },
+	});
+
+	api.root
+	  .addResource('import')
+	  .addMethod('GET', new apigateway.LambdaIntegration(this.importProductsFile));
+
 	new cdk.CfnOutput(this, 'ImportBucketName', {
 	  value: this.importBucket.bucketName,
 	  description: 'S3 bucket name for import files',
@@ -31,6 +62,11 @@ export class ImportServiceStack extends cdk.Stack {
 	new cdk.CfnOutput(this, 'UploadedPrefix', {
 	  value: 'uploaded/',
 	  description: 'Prefix used for uploaded files in the import bucket',
+	});
+
+	new cdk.CfnOutput(this, 'ImportApiUrl', {
+	  value: `${api.url}import`,
+	  description: 'Import endpoint to request pre-signed S3 upload URLs',
 	});
   }
 
