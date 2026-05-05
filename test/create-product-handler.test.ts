@@ -94,4 +94,3 @@ describe('createProduct handler', () => {
     expect(JSON.parse(response.body)).toEqual({ message: 'Error creating product' });
   });
 });
-

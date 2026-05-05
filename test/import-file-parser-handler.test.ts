@@ -49,7 +49,8 @@ describe('importFileParser handler', () => {
   beforeEach(() => {
     mockS3Send.mockReset();
     mockSqsSend.mockReset();
-    process.env.CATALOG_ITEMS_QUEUE_URL = 'https://sqs.us-east-1.amazonaws.com/123456789012/catalogItemsQueue';
+    process.env.CATALOG_ITEMS_QUEUE_URL =
+      'https://sqs.us-east-1.amazonaws.com/123456789012/catalogItemsQueue';
   });
 
   test('reads csv from s3 and sends each record to SQS', async () => {
@@ -100,7 +101,7 @@ describe('importFileParser handler', () => {
             },
           },
         ],
-      } as any)
+      } as any),
     ).rejects.toThrow('Unable to read object body as stream');
   });
 
@@ -128,10 +129,13 @@ describe('importFileParser handler', () => {
       ],
     } as any);
 
-    expect(errorSpy).toHaveBeenCalledWith('Error sending message to SQS', expect.objectContaining({
-      record: expect.any(Object),
-      error: expect.any(Error),
-    }));
+    expect(errorSpy).toHaveBeenCalledWith(
+      'Error sending message to SQS',
+      expect.objectContaining({
+        record: expect.any(Object),
+        error: expect.any(Error),
+      }),
+    );
 
     logSpy.mockRestore();
     errorSpy.mockRestore();

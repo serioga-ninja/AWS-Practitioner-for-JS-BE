@@ -8,6 +8,10 @@
     "build": "tsc",
     "watch": "tsc -w",
     "test": "jest",
+    "lint": "eslint \"**/*.ts\"",
+    "lint:fix": "eslint \"**/*.ts\" --fix",
+    "format": "prettier --write \"**/*.ts\"",
+    "format:check": "prettier --check \"**/*.ts\"",
     "cdk": "cdk",
     "cdk:synth": "npx dotenv-cli -e .env -- npx aws-cdk synth",
     "cdk:bootstrap": "npx dotenv-cli -e .env -- npx aws-cdk bootstrap",
@@ -25,14 +29,21 @@
     "outputs:json": "npx dotenv-cli -e .env -- aws cloudformation describe-stacks --stack-name ProductServiceStack --query \"Stacks[0].Outputs\" --output json && npx dotenv-cli -e .env -- aws cloudformation describe-stacks --stack-name ImportServiceStack --query \"Stacks[0].Outputs\" --output json"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/eslint__js": "^8.42.3",
     "@types/jest": "^30",
     "@types/node": "^24.10.1",
     "aws-cdk": "2.1118.4",
     "dotenv-cli": "^11.0.0",
+    "eslint": "^10.3.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.5",
     "jest": "^30",
+    "prettier": "^3.8.3",
     "ts-jest": "^29",
     "ts-node": "^10.9.2",
-    "typescript": "~5.9.3"
+    "typescript": "~5.9.3",
+    "typescript-eslint": "^8.59.2"
   },
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.1034.0",

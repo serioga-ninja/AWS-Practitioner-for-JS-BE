@@ -16,19 +16,19 @@ export async function main(event?: unknown) {
     const productsResult = await docClient.send(
       new ScanCommand({
         TableName: PRODUCTS_TABLE_NAME,
-      })
+      }),
     );
 
     // Fetch all stock records
     const stockResult = await docClient.send(
       new ScanCommand({
         TableName: STOCK_TABLE_NAME,
-      })
+      }),
     );
 
     // Create a stock lookup map for quick access
     const stockMap = new Map(
-      (stockResult.Items || []).map((item: any) => [item.product_id, item.count])
+      (stockResult.Items || []).map((item: any) => [item.product_id, item.count]),
     );
 
     // Join products with their stock data

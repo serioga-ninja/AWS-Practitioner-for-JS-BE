@@ -11,7 +11,9 @@ type ProductData = {
   count?: number;
 };
 
-function validateProductData(data: unknown): { valid: false; error: string } | { valid: true; data: ProductData } {
+function validateProductData(
+  data: unknown,
+): { valid: false; error: string } | { valid: true; data: ProductData } {
   if (!data || typeof data !== 'object') {
     return { valid: false, error: 'Product data must be an object' };
   }
@@ -30,7 +32,10 @@ function validateProductData(data: unknown): { valid: false; error: string } | {
     return { valid: false, error: 'Field "price" is required and must be a positive integer' };
   }
 
-  if (obj.count !== undefined && (typeof obj.count !== 'number' || !Number.isInteger(obj.count) || obj.count < 0)) {
+  if (
+    obj.count !== undefined &&
+    (typeof obj.count !== 'number' || !Number.isInteger(obj.count) || obj.count < 0)
+  ) {
     return { valid: false, error: 'Field "count" must be a non-negative integer' };
   }
 
@@ -96,7 +101,7 @@ async function createProduct(productData: ProductData): Promise<void> {
           },
         },
       ],
-    })
+    }),
   );
 
   console.log('Product created successfully', { id, title: productItem.title });
@@ -119,7 +124,7 @@ async function processRecord(record: SQSRecord): Promise<void> {
   } catch (error) {
     console.error('Error processing record', {
       messageId: record.messageId,
-      error: error instanceof Error ? error.message : 'Unknown error'
+      error: error instanceof Error ? error.message : 'Unknown error',
     });
     throw error;
   }
@@ -132,12 +137,12 @@ async function sendSnsNotification(productCount: number): Promise<void> {
         TopicArn: CREATE_PRODUCT_TOPIC_ARN,
         Subject: 'Products Created',
         Message: `Successfully created ${productCount} product(s) in the catalog.`,
-      })
+      }),
     );
     console.log('SNS notification sent', { productCount });
   } catch (error) {
     console.error('Error sending SNS notification', {
-      error: error instanceof Error ? error.message : 'Unknown error'
+      error: error instanceof Error ? error.message : 'Unknown error',
     });
     // Don't throw - notification failure shouldn't fail the whole process
   }
@@ -145,7 +150,7 @@ async function sendSnsNotification(productCount: number): Promise<void> {
 
 export async function main(event: SQSEvent): Promise<void> {
   console.log('catalogBatchProcess invoked', {
-    recordCount: event.Records.length
+    recordCount: event.Records.length,
   });
 
   const processPromises = event.Records.map((record) => processRecord(record));
@@ -158,7 +163,7 @@ export async function main(event: SQSEvent): Promise<void> {
     await sendSnsNotification(event.Records.length);
   } catch (error) {
     console.error('Error processing batch', {
-      error: error instanceof Error ? error.message : 'Unknown error'
+      error: error instanceof Error ? error.message : 'Unknown error',
     });
     // Re-throw to trigger SQS retry mechanism
     throw error;

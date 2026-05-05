@@ -57,4 +57,3 @@ export const mockProducts: Product[] = [
     imageUrl: 'https://example.com/products/acer-swift-3.jpg',
   },
 ];
-

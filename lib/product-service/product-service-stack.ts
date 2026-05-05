@@ -103,11 +103,11 @@ export class ProductServiceStack extends cdk.Stack {
     // Add email subscription to SNS topic from environment variable
     const subscriptionEmail = process.env.SNS_SUBSCRIPTION_EMAIL;
     if (subscriptionEmail) {
-      createProductTopic.addSubscription(
-        new snsSubscriptions.EmailSubscription(subscriptionEmail)
-      );
+      createProductTopic.addSubscription(new snsSubscriptions.EmailSubscription(subscriptionEmail));
     } else {
-      console.warn('SNS_SUBSCRIPTION_EMAIL environment variable not set. No email subscription will be created.');
+      console.warn(
+        'SNS_SUBSCRIPTION_EMAIL environment variable not set. No email subscription will be created.',
+      );
     }
 
     // Create catalogBatchProcess Lambda
@@ -135,7 +135,7 @@ export class ProductServiceStack extends cdk.Stack {
       new lambdaEventSources.SqsEventSource(this.catalogItemsQueue, {
         batchSize: 5,
         reportBatchItemFailures: true,
-      })
+      }),
     );
 
     new cdk.CfnOutput(this, 'CatalogItemsQueueUrl', {

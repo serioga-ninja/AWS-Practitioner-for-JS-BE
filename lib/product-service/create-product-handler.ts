@@ -9,7 +9,9 @@ type CreateProductRequestBody = {
   count?: number;
 };
 
-function validateCreateProductRequest(data: unknown): { valid: false; error: string } | { valid: true; data: CreateProductRequestBody } {
+function validateCreateProductRequest(
+  data: unknown,
+): { valid: false; error: string } | { valid: true; data: CreateProductRequestBody } {
   if (!data || typeof data !== 'object') {
     return { valid: false, error: 'Request body must be an object' };
   }
@@ -28,7 +30,10 @@ function validateCreateProductRequest(data: unknown): { valid: false; error: str
     return { valid: false, error: 'Field "price" is required and must be a positive integer' };
   }
 
-  if (obj.count !== undefined && (typeof obj.count !== 'number' || !Number.isInteger(obj.count) || obj.count < 0)) {
+  if (
+    obj.count !== undefined &&
+    (typeof obj.count !== 'number' || !Number.isInteger(obj.count) || obj.count < 0)
+  ) {
     return { valid: false, error: 'Field "count" must be a non-negative integer' };
   }
 
@@ -127,7 +132,7 @@ export async function main(event: CreateEvent) {
             },
           },
         ],
-      })
+      }),
     );
 
     return buildResponse(201, {

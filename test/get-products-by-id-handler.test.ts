@@ -81,4 +81,3 @@ describe('getProductsById handler', () => {
     expect(JSON.parse(response.body)).toEqual({ message: 'Error fetching product' });
   });
 });
-

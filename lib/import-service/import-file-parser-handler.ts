@@ -21,20 +21,20 @@ function isReadableStream(body: unknown): body is Readable {
 async function sendMessageToSqs(record: Record<string, string>) {
   console.log('Sending CSV record to SQS', { record });
 
-  await sqsClient.send(
-    new SendMessageCommand({
-      QueueUrl: CATALOG_ITEMS_QUEUE_URL,
-      MessageBody: JSON.stringify(record),
-    })
-  ).catch((error) => {
-    console.error('Error sending message to SQS', { record, error });
-  });
+  await sqsClient
+    .send(
+      new SendMessageCommand({
+        QueueUrl: CATALOG_ITEMS_QUEUE_URL,
+        MessageBody: JSON.stringify(record),
+      }),
+    )
+    .catch((error) => {
+      console.error('Error sending message to SQS', { record, error });
+    });
 }
 
 function parseCsvStream(stream: Readable, key: string) {
-  return new Promise<void>((resolve, reject) => {
-
-  });
+  return new Promise<void>((resolve, reject) => {});
 }
 
 function getParsedKey(objectKey: string) {
@@ -60,14 +60,14 @@ async function moveObjectToParsed(bucketName: string, objectKey: string) {
       Bucket: bucketName,
       CopySource: encodeCopySource(bucketName, objectKey),
       Key: parsedKey,
-    })
+    }),
   );
 
   await s3Client.send(
     new DeleteObjectCommand({
       Bucket: bucketName,
       Key: objectKey,
-    })
+    }),
   );
 
   console.log('Moved file to parsed folder', {
@@ -85,20 +85,18 @@ export async function main(event: S3Event) {
       new GetObjectCommand({
         Bucket: bucketName,
         Key: objectKey,
-      })
+      }),
     );
 
     if (!result.Body || !isReadableStream(result.Body)) {
       throw new Error(`Unable to read object body as stream for key: ${objectKey}`);
     }
 
-
-    const {resolve, reject, promise} = Promise.withResolvers<void>();
+    const { resolve, reject, promise } = Promise.withResolvers<void>();
 
     let sendCount = 0;
 
-    result.Body
-      .pipe(csv())
+    result.Body.pipe(csv())
       .on('data', (record: Record<string, string>) => {
         sendMessageToSqs(record);
         sendCount++;

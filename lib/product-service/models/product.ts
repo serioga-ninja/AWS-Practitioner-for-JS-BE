@@ -18,4 +18,3 @@ export interface Product {
   // From stock table
   count: number;
 }
-
