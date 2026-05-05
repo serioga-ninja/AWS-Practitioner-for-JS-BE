@@ -2,6 +2,8 @@ import * as cdk from 'aws-cdk-lib';
 import * as apigateway from 'aws-cdk-lib/aws-apigateway';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
+import * as sqs from 'aws-cdk-lib/aws-sqs';
+import * as lambdaEventSources from 'aws-cdk-lib/aws-lambda-event-sources';
 import * as path from 'path';
 import { Construct } from 'constructs';
 
@@ -80,6 +82,49 @@ export class ProductServiceStack extends cdk.Stack {
     this.stockTable.grantReadData(getProductsList);
     this.stockTable.grantReadData(getProductsById);
     this.stockTable.grantWriteData(createProduct);
+
+    // Create SQS queue for catalog items
+    const catalogItemsQueue = new sqs.Queue(this, 'CatalogItemsQueue', {
+      queueName: 'catalogItemsQueue',
+      visibilityTimeout: cdk.Duration.seconds(30),
+      retentionPeriod: cdk.Duration.days(4),
+    });
+
+    // Create catalogBatchProcess Lambda
+    const catalogBatchProcess = new lambda.Function(this, 'catalogBatchProcess', {
+      functionName: 'catalogBatchProcess',
+      runtime: lambda.Runtime.NODEJS_20_X,
+      handler: 'catalog-batch-process-handler.main',
+      code: lambda.Code.fromAsset(path.join(__dirname, './')),
+      memorySize: 128,
+      timeout: cdk.Duration.seconds(30),
+      environment: {
+        PRODUCTS_TABLE_NAME: this.productsTable.tableName,
+        STOCK_TABLE_NAME: this.stockTable.tableName,
+      },
+    });
+
+    // Grant write permissions to catalogBatchProcess
+    this.productsTable.grantWriteData(catalogBatchProcess);
+    this.stockTable.grantWriteData(catalogBatchProcess);
+
+    // Configure SQS as event source for catalogBatchProcess with batch size of 5
+    catalogBatchProcess.addEventSource(
+      new lambdaEventSources.SqsEventSource(catalogItemsQueue, {
+        batchSize: 5,
+        reportBatchItemFailures: true,
+      })
+    );
+
+    new cdk.CfnOutput(this, 'CatalogItemsQueueUrl', {
+      value: catalogItemsQueue.queueUrl,
+      description: 'URL of the Catalog Items SQS Queue',
+    });
+
+    new cdk.CfnOutput(this, 'CatalogItemsQueueArn', {
+      value: catalogItemsQueue.queueArn,
+      description: 'ARN of the Catalog Items SQS Queue',
+    });
 
     const api = new apigateway.RestApi(this, 'ProductServiceApi', {
       restApiName: 'Product Service API',
