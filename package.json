@@ -9,34 +9,36 @@
     "watch": "tsc -w",
     "test": "jest",
     "cdk": "cdk",
-    "cdk:bootstrap": "npx aws-cdk bootstrap",
-    "cdk:deploy:all": "npx aws-cdk deploy --all",
-    "cdk:deploy": "npx aws-cdk deploy",
-    "cdk:destroy:all": "npx aws-cdk destroy --all",
-    "populate-db": "ts-node scripts/populate-dynamodb.ts"
+    "cdk:synth": "npx dotenv-cli -e .env -- npx aws-cdk synth",
+    "cdk:bootstrap": "npx dotenv-cli -e .env -- npx aws-cdk bootstrap",
+    "cdk:deploy:all": "npx dotenv-cli -e .env -- npx aws-cdk deploy --all",
+    "cdk:deploy": "npx dotenv-cli -e .env -- npx aws-cdk deploy",
+    "cdk:destroy:all": "npx dotenv-cli -e .env -- npx aws-cdk destroy --all",
+    "populate-db": "npx dotenv-cli -e .env -- ts-node scripts/populate-dynamodb.ts"
   },
   "devDependencies": {
     "@types/jest": "^30",
     "@types/node": "^24.10.1",
     "aws-cdk": "2.1118.4",
+    "dotenv-cli": "^11.0.0",
     "jest": "^30",
     "ts-jest": "^29",
     "ts-node": "^10.9.2",
     "typescript": "~5.9.3"
   },
   "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.1034.0",
     "@aws-sdk/client-s3": "^3.1034.0",
     "@aws-sdk/client-sns": "^3.1034.0",
     "@aws-sdk/client-sqs": "^3.1034.0",
-    "@aws-sdk/client-dynamodb": "^3.1034.0",
     "@aws-sdk/lib-dynamodb": "^3.1034.0",
     "@aws-sdk/s3-request-presigner": "^3.1034.0",
     "@types/aws-lambda": "^8.10.161",
     "@types/uuid": "^10.0.0",
     "aws-cdk-lib": "^2.248.0",
     "aws-lambda": "^1.0.7",
-    "csv-parser": "^3.2.0",
     "constructs": "^10.5.0",
+    "csv-parser": "^3.2.0",
     "uuid": "^14.0.0",
     "zod": "^4.3.6"
   }
