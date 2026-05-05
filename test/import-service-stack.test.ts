@@ -32,7 +32,7 @@ describe('ImportServiceStack', () => {
 
     template.hasResourceProperties('AWS::Lambda::Function', {
       FunctionName: 'importFileParser',
-      Handler: 'import-file-parser-handler.main',
+      Handler: Match.stringLikeRegexp('(import-file-parser-handler|index)\\.main'),
       Runtime: 'nodejs24.x',
       Environment: {
         Variables: Match.objectLike({

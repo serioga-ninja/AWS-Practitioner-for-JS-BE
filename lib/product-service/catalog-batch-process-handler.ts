@@ -70,7 +70,7 @@ const PRODUCTS_TABLE_NAME = process.env.PRODUCTS_TABLE_NAME || 'products';
 const STOCK_TABLE_NAME = process.env.STOCK_TABLE_NAME || 'stock';
 const CREATE_PRODUCT_TOPIC_ARN = process.env.CREATE_PRODUCT_TOPIC_ARN || '';
 
-async function createProduct(productData: ProductData): Promise<void> {
+async function createProduct(productData: ProductData): Promise<ProductItem & { count: number }> {
   const id = randomUUID();
 
   const productItem: ProductItem = {
@@ -105,9 +105,14 @@ async function createProduct(productData: ProductData): Promise<void> {
   );
 
   console.log('Product created successfully', { id, title: productItem.title });
+
+  return {
+    ...productItem,
+    count: stockItem.count,
+  };
 }
 
-async function processRecord(record: SQSRecord): Promise<void> {
+async function processRecord(record: SQSRecord): Promise<ProductItem & { count: number }> {
   try {
     console.log('Processing SQS record', { messageId: record.messageId });
 
@@ -120,7 +125,7 @@ async function processRecord(record: SQSRecord): Promise<void> {
       throw new Error(`Validation error: ${validationResult.error}`);
     }
 
-    await createProduct(validationResult.data);
+    return await createProduct(validationResult.data);
   } catch (error) {
     console.error('Error processing record', {
       messageId: record.messageId,
@@ -130,16 +135,60 @@ async function processRecord(record: SQSRecord): Promise<void> {
   }
 }
 
-async function sendSnsNotification(productCount: number): Promise<void> {
+async function sendSnsNotification(
+  products: Array<ProductItem & { count: number }>,
+): Promise<void> {
   try {
+    // Calculate aggregated metrics for filtering
+    const totalPrice = products.reduce((sum, p) => sum + p.price, 0);
+    const averagePrice = Math.round(totalPrice / products.length);
+    const maxPrice = Math.max(...products.map((p) => p.price));
+    const totalCount = products.reduce((sum, p) => sum + p.count, 0);
+
     await snsClient.send(
       new PublishCommand({
         TopicArn: CREATE_PRODUCT_TOPIC_ARN,
         Subject: 'Products Created',
-        Message: `Successfully created ${productCount} product(s) in the catalog.`,
+        Message: JSON.stringify(
+          {
+            message: `Successfully created ${products.length} product(s) in the catalog.`,
+            products: products.map((p) => ({
+              id: p.id,
+              title: p.title,
+              price: p.price,
+              count: p.count,
+            })),
+            metrics: {
+              totalProducts: products.length,
+              averagePrice,
+              maxPrice,
+              totalCount,
+            },
+          },
+          null,
+          2,
+        ),
+        MessageAttributes: {
+          productCount: {
+            DataType: 'Number',
+            StringValue: String(products.length),
+          },
+          averagePrice: {
+            DataType: 'Number',
+            StringValue: String(averagePrice),
+          },
+          maxPrice: {
+            DataType: 'Number',
+            StringValue: String(maxPrice),
+          },
+          priceCategory: {
+            DataType: 'String',
+            StringValue: maxPrice >= 100 ? 'high-value' : 'low-value',
+          },
+        },
       }),
     );
-    console.log('SNS notification sent', { productCount });
+    console.log('SNS notification sent', { productCount: products.length, averagePrice, maxPrice });
   } catch (error) {
     console.error('Error sending SNS notification', {
       error: error instanceof Error ? error.message : 'Unknown error',
@@ -156,11 +205,11 @@ export async function main(event: SQSEvent): Promise<void> {
   const processPromises = event.Records.map((record) => processRecord(record));
 
   try {
-    await Promise.all(processPromises);
+    const createdProducts = await Promise.all(processPromises);
     console.log('All records processed successfully');
 
     // Send SNS notification after successful product creation
-    await sendSnsNotification(event.Records.length);
+    await sendSnsNotification(createdProducts);
   } catch (error) {
     console.error('Error processing batch', {
       error: error instanceof Error ? error.message : 'Unknown error',

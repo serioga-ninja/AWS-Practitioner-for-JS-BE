@@ -100,13 +100,33 @@ export class ProductServiceStack extends cdk.Stack {
       displayName: 'Product Creation Notifications',
     });
 
-    // Add email subscription to SNS topic from environment variable
+    // Add email subscriptions to SNS topic from environment variables with filter policies
     const subscriptionEmail = process.env.SNS_SUBSCRIPTION_EMAIL;
+    const highValueEmail = process.env.SNS_HIGH_VALUE_EMAIL;
+
     if (subscriptionEmail) {
+      // Main subscription - receives all notifications
       createProductTopic.addSubscription(new snsSubscriptions.EmailSubscription(subscriptionEmail));
     } else {
       console.warn(
-        'SNS_SUBSCRIPTION_EMAIL environment variable not set. No email subscription will be created.',
+        'SNS_SUBSCRIPTION_EMAIL environment variable not set. No primary email subscription will be created.',
+      );
+    }
+
+    // High-value products subscription with filter policy
+    if (highValueEmail) {
+      createProductTopic.addSubscription(
+        new snsSubscriptions.EmailSubscription(highValueEmail, {
+          filterPolicy: {
+            priceCategory: sns.SubscriptionFilter.stringFilter({
+              allowlist: ['high-value'],
+            }),
+          },
+        }),
+      );
+    } else {
+      console.warn(
+        'SNS_HIGH_VALUE_EMAIL environment variable not set. No high-value email subscription will be created.',
       );
     }
 
