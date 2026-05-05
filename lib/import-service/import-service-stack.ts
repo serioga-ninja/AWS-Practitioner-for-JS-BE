@@ -1,6 +1,7 @@
 import * as cdk from 'aws-cdk-lib';
 import * as apigateway from 'aws-cdk-lib/aws-apigateway';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
+import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as s3deploy from 'aws-cdk-lib/aws-s3-deployment';
 import * as s3n from 'aws-cdk-lib/aws-s3-notifications';
@@ -57,15 +58,18 @@ export class ImportServiceStack extends cdk.Stack {
 
 	this.importBucket.grantPut(this.importProductsFile, 'uploaded/*');
 
-	this.importFileParser = new lambda.Function(this, 'ImportFileParserLambda', {
+	this.importFileParser = new NodejsFunction(this, 'ImportFileParserLambda', {
 	  functionName: 'importFileParser',
 	  runtime: NODE_VERSION,
-	  handler: 'import-file-parser-handler.main',
-	  code: lambda.Code.fromAsset(path.join(__dirname, './')),
+	  handler: 'main',
+	  entry: path.join(__dirname, './import-file-parser-handler.ts'),
 	  memorySize: 128,
 	  timeout: cdk.Duration.seconds(10),
 	  environment: {
 		CATALOG_ITEMS_QUEUE_URL: props.catalogItemsQueue.queueUrl,
+	  },
+	  bundling: {
+		externalModules: ['@aws-sdk/*'],
 	  },
 	});
 
