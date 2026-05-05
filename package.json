@@ -14,7 +14,15 @@
     "cdk:deploy:all": "npx dotenv-cli -e .env -- npx aws-cdk deploy --all",
     "cdk:deploy": "npx dotenv-cli -e .env -- npx aws-cdk deploy",
     "cdk:destroy:all": "npx dotenv-cli -e .env -- npx aws-cdk destroy --all",
-    "populate-db": "npx dotenv-cli -e .env -- ts-node scripts/populate-dynamodb.ts"
+    "populate-db": "npx dotenv-cli -e .env -- ts-node scripts/populate-dynamodb.ts",
+    "logs:import-file": "npx dotenv-cli -e .env -- aws logs tail /aws/lambda/importProductsFile --follow --format short",
+    "logs:import-parser": "npx dotenv-cli -e .env -- aws logs tail /aws/lambda/importFileParser --follow --format short",
+    "logs:products-list": "npx dotenv-cli -e .env -- aws logs tail /aws/lambda/getProductsList --follow --format short",
+    "logs:products-by-id": "npx dotenv-cli -e .env -- aws logs tail /aws/lambda/getProductsById --follow --format short",
+    "logs:create-product": "npx dotenv-cli -e .env -- aws logs tail /aws/lambda/createProduct --follow --format short",
+    "logs:batch": "npx dotenv-cli -e .env -- aws logs tail /aws/lambda/catalogBatchProcess --follow --format short",
+    "outputs": "npx dotenv-cli -e .env -- aws cloudformation describe-stacks --stack-name ProductServiceStack --query \"Stacks[0].Outputs\" --output table && npx dotenv-cli -e .env -- aws cloudformation describe-stacks --stack-name ImportServiceStack --query \"Stacks[0].Outputs\" --output table",
+    "outputs:json": "npx dotenv-cli -e .env -- aws cloudformation describe-stacks --stack-name ProductServiceStack --query \"Stacks[0].Outputs\" --output json && npx dotenv-cli -e .env -- aws cloudformation describe-stacks --stack-name ImportServiceStack --query \"Stacks[0].Outputs\" --output json"
   },
   "devDependencies": {
     "@types/jest": "^30",
@@ -39,7 +47,6 @@
     "aws-lambda": "^1.0.7",
     "constructs": "^10.5.0",
     "csv-parser": "^3.2.0",
-    "uuid": "^14.0.0",
-    "zod": "^4.3.6"
+    "uuid": "^14.0.0"
   }
 }

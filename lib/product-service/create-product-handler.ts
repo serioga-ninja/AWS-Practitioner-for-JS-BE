@@ -1,16 +1,47 @@
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, TransactWriteCommand } from '@aws-sdk/lib-dynamodb';
 import { randomUUID } from 'crypto';
-import { z } from 'zod';
 
-const createProductRequestSchema = z.object({
-  title: z.string().trim().min(1, 'Field "title" is required and must be a non-empty string'),
-  description: z.string().optional(),
-  price: z.number().int().positive('Field "price" is required and must be a positive integer'),
-  count: z.number().int().min(0, 'Field "count" must be a non-negative integer').optional(),
-});
+type CreateProductRequestBody = {
+  title: string;
+  description?: string;
+  price: number;
+  count?: number;
+};
 
-type CreateProductRequestBody = z.infer<typeof createProductRequestSchema>;
+function validateCreateProductRequest(data: unknown): { valid: false; error: string } | { valid: true; data: CreateProductRequestBody } {
+  if (!data || typeof data !== 'object') {
+    return { valid: false, error: 'Request body must be an object' };
+  }
+
+  const obj = data as Record<string, unknown>;
+
+  if (typeof obj.title !== 'string' || obj.title.trim().length === 0) {
+    return { valid: false, error: 'Field "title" is required and must be a non-empty string' };
+  }
+
+  if (obj.description !== undefined && typeof obj.description !== 'string') {
+    return { valid: false, error: 'Field "description" must be a string if provided' };
+  }
+
+  if (typeof obj.price !== 'number' || !Number.isInteger(obj.price) || obj.price <= 0) {
+    return { valid: false, error: 'Field "price" is required and must be a positive integer' };
+  }
+
+  if (obj.count !== undefined && (typeof obj.count !== 'number' || !Number.isInteger(obj.count) || obj.count < 0)) {
+    return { valid: false, error: 'Field "count" must be a non-negative integer' };
+  }
+
+  return {
+    valid: true,
+    data: {
+      title: obj.title,
+      description: obj.description as string | undefined,
+      price: obj.price,
+      count: obj.count as number | undefined,
+    },
+  };
+}
 
 type ProductItem = {
   id: string;
@@ -60,11 +91,9 @@ export async function main(event: CreateEvent) {
       return buildResponse(400, { message: 'Request body must be valid JSON' });
     }
 
-    const validationResult = createProductRequestSchema.safeParse(parsedBody);
-    if (!validationResult.success) {
-      const firstIssue = validationResult.error.issues[0];
-      const message = firstIssue?.message || 'Invalid request body';
-      return buildResponse(400, { message });
+    const validationResult = validateCreateProductRequest(parsedBody);
+    if (!validationResult.valid) {
+      return buildResponse(400, { message: validationResult.error });
     }
 
     const validatedBody: CreateProductRequestBody = validationResult.data;
@@ -110,5 +139,3 @@ export async function main(event: CreateEvent) {
     return buildResponse(500, { message: 'Error creating product' });
   }
 }
-
-

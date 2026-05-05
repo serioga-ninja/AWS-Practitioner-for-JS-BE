@@ -3,16 +3,47 @@ import { DynamoDBDocumentClient, TransactWriteCommand } from '@aws-sdk/lib-dynam
 import { SNSClient, PublishCommand } from '@aws-sdk/client-sns';
 import { SQSEvent, SQSRecord } from 'aws-lambda';
 import { randomUUID } from 'crypto';
-import { z } from 'zod';
 
-const productSchema = z.object({
-  title: z.string().trim().min(1, 'Field "title" is required and must be a non-empty string'),
-  description: z.string().optional(),
-  price: z.number().int().positive('Field "price" is required and must be a positive integer'),
-  count: z.number().int().min(0, 'Field "count" must be a non-negative integer').optional(),
-});
+type ProductData = {
+  title: string;
+  description?: string;
+  price: number;
+  count?: number;
+};
 
-type ProductData = z.infer<typeof productSchema>;
+function validateProductData(data: unknown): { valid: false; error: string } | { valid: true; data: ProductData } {
+  if (!data || typeof data !== 'object') {
+    return { valid: false, error: 'Product data must be an object' };
+  }
+
+  const obj = data as Record<string, unknown>;
+
+  if (typeof obj.title !== 'string' || obj.title.trim().length === 0) {
+    return { valid: false, error: 'Field "title" is required and must be a non-empty string' };
+  }
+
+  if (obj.description !== undefined && typeof obj.description !== 'string') {
+    return { valid: false, error: 'Field "description" must be a string if provided' };
+  }
+
+  if (typeof obj.price !== 'number' || !Number.isInteger(obj.price) || obj.price <= 0) {
+    return { valid: false, error: 'Field "price" is required and must be a positive integer' };
+  }
+
+  if (obj.count !== undefined && (typeof obj.count !== 'number' || !Number.isInteger(obj.count) || obj.count < 0)) {
+    return { valid: false, error: 'Field "count" must be a non-negative integer' };
+  }
+
+  return {
+    valid: true,
+    data: {
+      title: obj.title,
+      description: obj.description as string | undefined,
+      price: obj.price,
+      count: obj.count as number | undefined,
+    },
+  };
+}
 
 type ProductItem = {
   id: string;
@@ -78,12 +109,10 @@ async function processRecord(record: SQSRecord): Promise<void> {
     const messageBody = JSON.parse(record.body);
     console.log('Message body', { messageBody });
 
-    const validationResult = productSchema.safeParse(messageBody);
-    if (!validationResult.success) {
-      const firstIssue = validationResult.error.issues[0];
-      const message = firstIssue?.message || 'Invalid product data';
-      console.error('Validation error', { message, messageBody });
-      throw new Error(`Validation error: ${message}`);
+    const validationResult = validateProductData(messageBody);
+    if (!validationResult.valid) {
+      console.error('Validation error', { error: validationResult.error, messageBody });
+      throw new Error(`Validation error: ${validationResult.error}`);
     }
 
     await createProduct(validationResult.data);

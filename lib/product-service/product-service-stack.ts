@@ -157,13 +157,14 @@ export class ProductServiceStack extends cdk.Stack {
       restApiName: 'Product Service API',
       defaultCorsPreflightOptions: {
         allowOrigins: apigateway.Cors.ALL_ORIGINS,
-        allowMethods: ['GET', 'POST', 'OPTIONS'],
+        allowMethods: ['GET', 'POST', 'PUT', 'OPTIONS'],
       },
     });
 
     const productsResource = api.root.addResource('products');
     productsResource.addMethod('GET', new apigateway.LambdaIntegration(getProductsList));
     productsResource.addMethod('POST', new apigateway.LambdaIntegration(createProduct));
+    productsResource.addMethod('PUT', new apigateway.LambdaIntegration(createProduct));
     productsResource
       .addResource('{productId}')
       .addMethod('GET', new apigateway.LambdaIntegration(getProductsById));
