@@ -4,15 +4,21 @@ import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as s3deploy from 'aws-cdk-lib/aws-s3-deployment';
 import * as s3n from 'aws-cdk-lib/aws-s3-notifications';
+import * as sqs from 'aws-cdk-lib/aws-sqs';
 import * as path from 'path';
 import { Construct } from 'constructs';
+import { NODE_VERSION } from '../const';
+
+export interface ImportServiceStackProps extends cdk.StackProps {
+  catalogItemsQueue: sqs.Queue;
+}
 
 export class ImportServiceStack extends cdk.Stack {
   public readonly importBucket: s3.Bucket;
   public readonly importProductsFile: lambda.Function;
   public readonly importFileParser: lambda.Function;
 
-  constructor(scope: Construct, id: string, props?: cdk.StackProps) {
+  constructor(scope: Construct, id: string, props: ImportServiceStackProps) {
 	super(scope, id, props);
 
 	this.importBucket = new s3.Bucket(this, 'ImportBucket', {
@@ -38,7 +44,7 @@ export class ImportServiceStack extends cdk.Stack {
 
 	this.importProductsFile = new lambda.Function(this, 'ImportProductsFileLambda', {
 	  functionName: 'importProductsFile',
-	  runtime: lambda.Runtime.NODEJS_20_X,
+	  runtime: NODE_VERSION,
 	  handler: 'import-products-file-handler.main',
 	  code: lambda.Code.fromAsset(path.join(__dirname, './')),
 	  memorySize: 128,
@@ -53,14 +59,21 @@ export class ImportServiceStack extends cdk.Stack {
 
 	this.importFileParser = new lambda.Function(this, 'ImportFileParserLambda', {
 	  functionName: 'importFileParser',
-	  runtime: lambda.Runtime.NODEJS_20_X,
+	  runtime: NODE_VERSION,
 	  handler: 'import-file-parser-handler.main',
 	  code: lambda.Code.fromAsset(path.join(__dirname, './')),
 	  memorySize: 128,
 	  timeout: cdk.Duration.seconds(10),
+	  environment: {
+		CATALOG_ITEMS_QUEUE_URL: props.catalogItemsQueue.queueUrl,
+	  },
 	});
 
 	this.importBucket.grantRead(this.importFileParser, 'uploaded/*');
+	this.importBucket.grantDelete(this.importFileParser, 'uploaded/*');
+	this.importBucket.grantPut(this.importFileParser, 'parsed/*');
+	props.catalogItemsQueue.grantSendMessages(this.importFileParser);
+
 	this.importBucket.addEventNotification(
 	  s3.EventType.OBJECT_CREATED,
 	  new s3n.LambdaDestination(this.importFileParser),

@@ -1,11 +1,21 @@
 import * as cdk from 'aws-cdk-lib';
+import * as sqs from 'aws-cdk-lib/aws-sqs';
 import { Match, Template } from 'aws-cdk-lib/assertions';
 import { ImportServiceStack } from '../lib/import-service/import-service-stack';
 
 describe('ImportServiceStack', () => {
   test('creates import lambdas, GET /import endpoint and S3 notification for parser', () => {
     const app = new cdk.App();
-    const stack = new ImportServiceStack(app, 'ImportServiceStackTest');
+
+    // Create a mock queue for testing
+    const mockQueueStack = new cdk.Stack(app, 'MockQueueStack');
+    const mockQueue = new sqs.Queue(mockQueueStack, 'MockCatalogItemsQueue', {
+      queueName: 'test-catalogItemsQueue',
+    });
+
+    const stack = new ImportServiceStack(app, 'ImportServiceStackTest', {
+      catalogItemsQueue: mockQueue,
+    });
     const template = Template.fromStack(stack);
 
     template.hasResourceProperties('AWS::Lambda::Function', {
@@ -24,6 +34,11 @@ describe('ImportServiceStack', () => {
       FunctionName: 'importFileParser',
       Handler: 'import-file-parser-handler.main',
       Runtime: 'nodejs20.x',
+      Environment: {
+        Variables: Match.objectLike({
+          CATALOG_ITEMS_QUEUE_URL: Match.anyValue(),
+        }),
+      },
     });
 
     template.hasResourceProperties('AWS::ApiGateway::Resource', {
@@ -54,6 +69,9 @@ describe('ImportServiceStack', () => {
       }),
     });
 
+    // Note: SQS SendMessage permission is granted via cross-stack reference
+    // and may not appear in this stack's template during testing
+
     template.hasResourceProperties('AWS::Lambda::Permission', {
       Action: 'lambda:InvokeFunction',
       Principal: 's3.amazonaws.com',
@@ -80,6 +98,3 @@ describe('ImportServiceStack', () => {
     });
   });
 });
-
-
-

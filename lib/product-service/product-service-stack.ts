@@ -6,10 +6,12 @@ import * as sqs from 'aws-cdk-lib/aws-sqs';
 import * as lambdaEventSources from 'aws-cdk-lib/aws-lambda-event-sources';
 import * as path from 'path';
 import { Construct } from 'constructs';
+import { NODE_VERSION } from '../const';
 
 export class ProductServiceStack extends cdk.Stack {
   public readonly productsTable: dynamodb.Table;
   public readonly stockTable: dynamodb.Table;
+  public readonly catalogItemsQueue: sqs.Queue;
 
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
@@ -38,7 +40,7 @@ export class ProductServiceStack extends cdk.Stack {
 
     const getProductsList = new lambda.Function(this, 'getProductsList', {
       functionName: 'getProductsList',
-      runtime: lambda.Runtime.NODEJS_20_X,
+      runtime: NODE_VERSION,
       handler: 'get-products-list-handler.main',
       code: lambda.Code.fromAsset(path.join(__dirname, './')),
       memorySize: 128,
@@ -51,7 +53,7 @@ export class ProductServiceStack extends cdk.Stack {
 
     const getProductsById = new lambda.Function(this, 'getProductsById', {
       functionName: 'getProductsById',
-      runtime: lambda.Runtime.NODEJS_20_X,
+      runtime: NODE_VERSION,
       handler: 'get-products-by-id-handler.main',
       code: lambda.Code.fromAsset(path.join(__dirname, './')),
       memorySize: 128,
@@ -64,7 +66,7 @@ export class ProductServiceStack extends cdk.Stack {
 
     const createProduct = new lambda.Function(this, 'createProduct', {
       functionName: 'createProduct',
-      runtime: lambda.Runtime.NODEJS_20_X,
+      runtime: NODE_VERSION,
       handler: 'create-product-handler.main',
       code: lambda.Code.fromAsset(path.join(__dirname, './')),
       memorySize: 128,
@@ -84,7 +86,7 @@ export class ProductServiceStack extends cdk.Stack {
     this.stockTable.grantWriteData(createProduct);
 
     // Create SQS queue for catalog items
-    const catalogItemsQueue = new sqs.Queue(this, 'CatalogItemsQueue', {
+    this.catalogItemsQueue = new sqs.Queue(this, 'CatalogItemsQueue', {
       queueName: 'catalogItemsQueue',
       visibilityTimeout: cdk.Duration.seconds(30),
       retentionPeriod: cdk.Duration.days(4),
@@ -93,7 +95,7 @@ export class ProductServiceStack extends cdk.Stack {
     // Create catalogBatchProcess Lambda
     const catalogBatchProcess = new lambda.Function(this, 'catalogBatchProcess', {
       functionName: 'catalogBatchProcess',
-      runtime: lambda.Runtime.NODEJS_20_X,
+      runtime: NODE_VERSION,
       handler: 'catalog-batch-process-handler.main',
       code: lambda.Code.fromAsset(path.join(__dirname, './')),
       memorySize: 128,
@@ -110,19 +112,19 @@ export class ProductServiceStack extends cdk.Stack {
 
     // Configure SQS as event source for catalogBatchProcess with batch size of 5
     catalogBatchProcess.addEventSource(
-      new lambdaEventSources.SqsEventSource(catalogItemsQueue, {
+      new lambdaEventSources.SqsEventSource(this.catalogItemsQueue, {
         batchSize: 5,
         reportBatchItemFailures: true,
       })
     );
 
     new cdk.CfnOutput(this, 'CatalogItemsQueueUrl', {
-      value: catalogItemsQueue.queueUrl,
+      value: this.catalogItemsQueue.queueUrl,
       description: 'URL of the Catalog Items SQS Queue',
     });
 
     new cdk.CfnOutput(this, 'CatalogItemsQueueArn', {
-      value: catalogItemsQueue.queueArn,
+      value: this.catalogItemsQueue.queueArn,
       description: 'ARN of the Catalog Items SQS Queue',
     });
 
