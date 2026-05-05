@@ -3,6 +3,8 @@ import * as apigateway from 'aws-cdk-lib/aws-apigateway';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as sqs from 'aws-cdk-lib/aws-sqs';
+import * as sns from 'aws-cdk-lib/aws-sns';
+import * as snsSubscriptions from 'aws-cdk-lib/aws-sns-subscriptions';
 import * as lambdaEventSources from 'aws-cdk-lib/aws-lambda-event-sources';
 import * as path from 'path';
 import { Construct } from 'constructs';
@@ -92,6 +94,17 @@ export class ProductServiceStack extends cdk.Stack {
       retentionPeriod: cdk.Duration.days(4),
     });
 
+    // Create SNS topic for product creation notifications
+    const createProductTopic = new sns.Topic(this, 'CreateProductTopic', {
+      topicName: 'createProductTopic',
+      displayName: 'Product Creation Notifications',
+    });
+
+    // Add email subscription to SNS topic
+    createProductTopic.addSubscription(
+      new snsSubscriptions.EmailSubscription('your.email@example.com')
+    );
+
     // Create catalogBatchProcess Lambda
     const catalogBatchProcess = new lambda.Function(this, 'catalogBatchProcess', {
       functionName: 'catalogBatchProcess',
@@ -103,12 +116,14 @@ export class ProductServiceStack extends cdk.Stack {
       environment: {
         PRODUCTS_TABLE_NAME: this.productsTable.tableName,
         STOCK_TABLE_NAME: this.stockTable.tableName,
+        CREATE_PRODUCT_TOPIC_ARN: createProductTopic.topicArn,
       },
     });
 
     // Grant write permissions to catalogBatchProcess
     this.productsTable.grantWriteData(catalogBatchProcess);
     this.stockTable.grantWriteData(catalogBatchProcess);
+    createProductTopic.grantPublish(catalogBatchProcess);
 
     // Configure SQS as event source for catalogBatchProcess with batch size of 5
     catalogBatchProcess.addEventSource(
@@ -126,6 +141,11 @@ export class ProductServiceStack extends cdk.Stack {
     new cdk.CfnOutput(this, 'CatalogItemsQueueArn', {
       value: this.catalogItemsQueue.queueArn,
       description: 'ARN of the Catalog Items SQS Queue',
+    });
+
+    new cdk.CfnOutput(this, 'CreateProductTopicArn', {
+      value: createProductTopic.topicArn,
+      description: 'ARN of the Create Product SNS Topic',
     });
 
     const api = new apigateway.RestApi(this, 'ProductServiceApi', {

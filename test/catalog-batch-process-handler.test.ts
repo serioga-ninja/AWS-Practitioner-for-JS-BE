@@ -13,6 +13,13 @@ jest.mock('@aws-sdk/lib-dynamodb', () => ({
   TransactWriteCommand: jest.fn(),
 }));
 
+jest.mock('@aws-sdk/client-sns', () => ({
+  SNSClient: class {
+    send = mockSend;
+  },
+  PublishCommand: jest.fn(),
+}));
+
 import { SQSEvent } from 'aws-lambda';
 import { main } from '../lib/product-service/catalog-batch-process-handler';
 
@@ -21,6 +28,7 @@ describe('catalogBatchProcess handler', () => {
     mockSend.mockClear();
     process.env.PRODUCTS_TABLE_NAME = 'products';
     process.env.STOCK_TABLE_NAME = 'stock';
+    process.env.CREATE_PRODUCT_TOPIC_ARN = 'arn:aws:sns:us-east-1:123456789012:createProductTopic';
   });
 
   it('should process all SQS messages and create products', async () => {
@@ -75,7 +83,7 @@ describe('catalogBatchProcess handler', () => {
 
     await main(event);
 
-    expect(mockSend).toHaveBeenCalledTimes(2);
+    expect(mockSend).toHaveBeenCalledTimes(3); // 2 DynamoDB writes + 1 SNS publish
   });
 
   it('should handle products with optional fields', async () => {
@@ -107,7 +115,7 @@ describe('catalogBatchProcess handler', () => {
 
     await main(event);
 
-    expect(mockSend).toHaveBeenCalledTimes(1);
+    expect(mockSend).toHaveBeenCalledTimes(2); // 1 DynamoDB write + 1 SNS publish
   });
 
   it('should throw error for invalid product data', async () => {
@@ -197,6 +205,6 @@ describe('catalogBatchProcess handler', () => {
 
     await main(event);
 
-    expect(mockSend).toHaveBeenCalledTimes(5);
+    expect(mockSend).toHaveBeenCalledTimes(6); // 5 DynamoDB writes + 1 SNS publish
   });
 });

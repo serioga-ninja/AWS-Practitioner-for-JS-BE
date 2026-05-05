@@ -1,5 +1,6 @@
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, TransactWriteCommand } from '@aws-sdk/lib-dynamodb';
+import { SNSClient, PublishCommand } from '@aws-sdk/client-sns';
 import { SQSEvent, SQSRecord } from 'aws-lambda';
 import { randomUUID } from 'crypto';
 import { z } from 'zod';
@@ -27,9 +28,11 @@ type StockItem = {
 
 const dynamoDBClient = new DynamoDBClient({});
 const docClient = DynamoDBDocumentClient.from(dynamoDBClient);
+const snsClient = new SNSClient({});
 
 const PRODUCTS_TABLE_NAME = process.env.PRODUCTS_TABLE_NAME || 'products';
 const STOCK_TABLE_NAME = process.env.STOCK_TABLE_NAME || 'stock';
+const CREATE_PRODUCT_TOPIC_ARN = process.env.CREATE_PRODUCT_TOPIC_ARN || '';
 
 async function createProduct(productData: ProductData): Promise<void> {
   const id = randomUUID();
@@ -93,6 +96,24 @@ async function processRecord(record: SQSRecord): Promise<void> {
   }
 }
 
+async function sendSnsNotification(productCount: number): Promise<void> {
+  try {
+    await snsClient.send(
+      new PublishCommand({
+        TopicArn: CREATE_PRODUCT_TOPIC_ARN,
+        Subject: 'Products Created',
+        Message: `Successfully created ${productCount} product(s) in the catalog.`,
+      })
+    );
+    console.log('SNS notification sent', { productCount });
+  } catch (error) {
+    console.error('Error sending SNS notification', {
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+    // Don't throw - notification failure shouldn't fail the whole process
+  }
+}
+
 export async function main(event: SQSEvent): Promise<void> {
   console.log('catalogBatchProcess invoked', {
     recordCount: event.Records.length
@@ -103,6 +124,9 @@ export async function main(event: SQSEvent): Promise<void> {
   try {
     await Promise.all(processPromises);
     console.log('All records processed successfully');
+
+    // Send SNS notification after successful product creation
+    await sendSnsNotification(event.Records.length);
   } catch (error) {
     console.error('Error processing batch', {
       error: error instanceof Error ? error.message : 'Unknown error'

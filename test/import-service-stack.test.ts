@@ -21,7 +21,7 @@ describe('ImportServiceStack', () => {
     template.hasResourceProperties('AWS::Lambda::Function', {
       FunctionName: 'importProductsFile',
       Handler: 'import-products-file-handler.main',
-      Runtime: 'nodejs20.x',
+      Runtime: 'nodejs24.x',
       Environment: {
         Variables: Match.objectLike({
           IMPORT_BUCKET_NAME: Match.anyValue(),
@@ -33,7 +33,7 @@ describe('ImportServiceStack', () => {
     template.hasResourceProperties('AWS::Lambda::Function', {
       FunctionName: 'importFileParser',
       Handler: 'import-file-parser-handler.main',
-      Runtime: 'nodejs20.x',
+      Runtime: 'nodejs24.x',
       Environment: {
         Variables: Match.objectLike({
           CATALOG_ITEMS_QUEUE_URL: Match.anyValue(),

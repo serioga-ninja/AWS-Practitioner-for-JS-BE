@@ -105,6 +105,8 @@ export async function main(event: S3Event) {
       })
       .on('error', reject)
       .on('end', async () => {
+        console.log(`Successfully sent ${sendCount} records to SQS`);
+
         await moveObjectToParsed(bucketName, objectKey);
 
         resolve();

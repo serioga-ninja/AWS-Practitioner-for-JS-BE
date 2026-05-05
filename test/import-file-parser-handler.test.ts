@@ -77,11 +77,9 @@ describe('importFileParser handler', () => {
     expect(mockSqsSend).toHaveBeenCalledTimes(2);
 
     expect(logSpy).toHaveBeenCalledWith('Sending CSV record to SQS', {
-      key: 'uploaded/products.csv',
       record: { title: 'Book', price: '10', count: '5' },
     });
     expect(logSpy).toHaveBeenCalledWith('Sending CSV record to SQS', {
-      key: 'uploaded/products.csv',
       record: { title: 'Pen', price: '2', count: '10' },
     });
     expect(logSpy).toHaveBeenCalledWith('Successfully sent 2 records to SQS');
@@ -106,8 +104,11 @@ describe('importFileParser handler', () => {
     ).rejects.toThrow('Unable to read object body as stream');
   });
 
-  test('throws when SQS send fails', async () => {
+  test('logs error when SQS send fails', async () => {
     const logSpy = jest.spyOn(console, 'log').mockImplementation(() => {
+      // suppress noisy test logs
+    });
+    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {
       // suppress noisy test logs
     });
 
@@ -116,19 +117,23 @@ describe('importFileParser handler', () => {
     });
     mockSqsSend.mockRejectedValue(new Error('SQS send failed'));
 
-    await expect(
-      main({
-        Records: [
-          {
-            s3: {
-              bucket: { name: 'import-bucket' },
-              object: { key: 'uploaded/products.csv' },
-            },
+    await main({
+      Records: [
+        {
+          s3: {
+            bucket: { name: 'import-bucket' },
+            object: { key: 'uploaded/products.csv' },
           },
-        ],
-      } as any)
-    ).rejects.toThrow('SQS send failed');
+        },
+      ],
+    } as any);
+
+    expect(errorSpy).toHaveBeenCalledWith('Error sending message to SQS', expect.objectContaining({
+      record: expect.any(Object),
+      error: expect.any(Error),
+    }));
 
     logSpy.mockRestore();
+    errorSpy.mockRestore();
   });
 });
