@@ -5,10 +5,11 @@ import { ProductServiceStack } from '../lib/product-service/product-service-stac
 
 const app = new cdk.App();
 
-new ProductServiceStack(app, 'ProductServiceStack', {
+const productServiceStack = new ProductServiceStack(app, 'ProductServiceStack', {
   env: { account: process.env.CDK_DEFAULT_ACCOUNT, region: process.env.CDK_DEFAULT_REGION },
 });
 
 new ImportServiceStack(app, 'ImportServiceStack', {
   env: { account: process.env.CDK_DEFAULT_ACCOUNT, region: process.env.CDK_DEFAULT_REGION },
+  catalogItemsQueue: productServiceStack.catalogItemsQueue,
 });

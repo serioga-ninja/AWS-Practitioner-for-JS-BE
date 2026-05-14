@@ -36,7 +36,7 @@ export async function main(event: PathEvent) {
       new GetCommand({
         TableName: PRODUCTS_TABLE_NAME,
         Key: { id: productId },
-      })
+      }),
     );
 
     if (!productResult.Item) {
@@ -55,7 +55,7 @@ export async function main(event: PathEvent) {
       new GetCommand({
         TableName: STOCK_TABLE_NAME,
         Key: { product_id: productId },
-      })
+      }),
     );
 
     // Join product and stock data
@@ -87,4 +87,3 @@ export async function main(event: PathEvent) {
     };
   }
 }
-

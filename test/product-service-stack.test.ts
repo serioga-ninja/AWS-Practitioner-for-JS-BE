@@ -11,19 +11,19 @@ describe('ProductServiceStack', () => {
     template.hasResourceProperties('AWS::Lambda::Function', {
       FunctionName: 'getProductsList',
       Handler: 'get-products-list-handler.main',
-      Runtime: 'nodejs20.x',
+      Runtime: 'nodejs24.x',
     });
 
     template.hasResourceProperties('AWS::Lambda::Function', {
       FunctionName: 'getProductsById',
       Handler: 'get-products-by-id-handler.main',
-      Runtime: 'nodejs20.x',
+      Runtime: 'nodejs24.x',
     });
 
     template.hasResourceProperties('AWS::Lambda::Function', {
       FunctionName: 'createProduct',
       Handler: 'create-product-handler.main',
-      Runtime: 'nodejs20.x',
+      Runtime: 'nodejs24.x',
       Environment: {
         Variables: Match.objectLike({
           PRODUCTS_TABLE_NAME: Match.anyValue(),

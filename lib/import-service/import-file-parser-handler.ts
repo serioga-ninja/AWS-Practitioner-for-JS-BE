@@ -4,26 +4,37 @@ import {
   GetObjectCommand,
   S3Client,
 } from '@aws-sdk/client-s3';
+import { SQSClient, SendMessageCommand } from '@aws-sdk/client-sqs';
 import type { S3Event } from 'aws-lambda';
 import csv from 'csv-parser';
 import { Readable } from 'stream';
 
 const s3Client = new S3Client({});
+const sqsClient = new SQSClient({});
+
+const CATALOG_ITEMS_QUEUE_URL = process.env.CATALOG_ITEMS_QUEUE_URL || '';
 
 function isReadableStream(body: unknown): body is Readable {
   return body instanceof Readable;
 }
 
+async function sendMessageToSqs(record: Record<string, string>) {
+  console.log('Sending CSV record to SQS', { record });
+
+  await sqsClient
+    .send(
+      new SendMessageCommand({
+        QueueUrl: CATALOG_ITEMS_QUEUE_URL,
+        MessageBody: JSON.stringify(record),
+      }),
+    )
+    .catch((error) => {
+      console.error('Error sending message to SQS', { record, error });
+    });
+}
+
 function parseCsvStream(stream: Readable, key: string) {
-  return new Promise<void>((resolve, reject) => {
-    stream
-      .pipe(csv())
-      .on('data', (record: Record<string, string>) => {
-        console.log('Parsed CSV record', { key, record });
-      })
-      .on('error', reject)
-      .on('end', () => resolve());
-  });
+  return new Promise<void>((resolve, reject) => {});
 }
 
 function getParsedKey(objectKey: string) {
@@ -49,14 +60,14 @@ async function moveObjectToParsed(bucketName: string, objectKey: string) {
       Bucket: bucketName,
       CopySource: encodeCopySource(bucketName, objectKey),
       Key: parsedKey,
-    })
+    }),
   );
 
   await s3Client.send(
     new DeleteObjectCommand({
       Bucket: bucketName,
       Key: objectKey,
-    })
+    }),
   );
 
   console.log('Moved file to parsed folder', {
@@ -74,14 +85,31 @@ export async function main(event: S3Event) {
       new GetObjectCommand({
         Bucket: bucketName,
         Key: objectKey,
-      })
+      }),
     );
 
     if (!result.Body || !isReadableStream(result.Body)) {
       throw new Error(`Unable to read object body as stream for key: ${objectKey}`);
     }
 
-    await parseCsvStream(result.Body, objectKey);
-    await moveObjectToParsed(bucketName, objectKey);
+    const { resolve, reject, promise } = Promise.withResolvers<void>();
+
+    let sendCount = 0;
+
+    result.Body.pipe(csv())
+      .on('data', (record: Record<string, string>) => {
+        sendMessageToSqs(record);
+        sendCount++;
+      })
+      .on('error', reject)
+      .on('end', async () => {
+        console.log(`Successfully sent ${sendCount} records to SQS`);
+
+        await moveObjectToParsed(bucketName, objectKey);
+
+        resolve();
+      });
+
+    await promise;
   }
 }

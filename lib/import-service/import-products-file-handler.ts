@@ -63,5 +63,3 @@ export async function main(event: ImportEvent) {
     return buildResponse(500, { message: 'Error creating signed url' });
   }
 }
-
-

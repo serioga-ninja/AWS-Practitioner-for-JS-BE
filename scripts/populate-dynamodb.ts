@@ -194,7 +194,7 @@ async function populateDatabase() {
         new PutCommand({
           TableName: 'products',
           Item: product,
-        })
+        }),
       );
       console.log(`✓ Inserted product: ${product.title} (ID: ${product.id})`);
     }
@@ -207,7 +207,7 @@ async function populateDatabase() {
         new PutCommand({
           TableName: 'stock',
           Item: stock,
-        })
+        }),
       );
       const product = sampleProducts.find((p) => p.id === stock.product_id);
       console.log(`✓ Inserted stock for ${product?.title}: ${stock.count} units`);
@@ -222,5 +222,3 @@ async function populateDatabase() {
 }
 
 populateDatabase();
-
-
