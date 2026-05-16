@@ -12,6 +12,7 @@ import { NODE_VERSION } from '../const';
 
 export interface ImportServiceStackProps extends cdk.StackProps {
   catalogItemsQueue: sqs.Queue;
+  basicAuthorizerFunctionArn: string;
 }
 
 export class ImportServiceStack extends cdk.Stack {
@@ -92,9 +93,23 @@ export class ImportServiceStack extends cdk.Stack {
       },
     });
 
+    const importedBasicAuthorizerFunction = lambda.Function.fromFunctionArn(
+      this,
+      'ImportedBasicAuthorizerFunction',
+      props.basicAuthorizerFunctionArn,
+    );
+
+    const importTokenAuthorizer = new apigateway.TokenAuthorizer(this, 'ImportTokenAuthorizer', {
+      handler: importedBasicAuthorizerFunction,
+      resultsCacheTtl: cdk.Duration.seconds(0),
+    });
+
     api.root
       .addResource('import')
-      .addMethod('GET', new apigateway.LambdaIntegration(this.importProductsFile));
+      .addMethod('GET', new apigateway.LambdaIntegration(this.importProductsFile), {
+        authorizer: importTokenAuthorizer,
+        authorizationType: apigateway.AuthorizationType.CUSTOM,
+      });
 
     new cdk.CfnOutput(this, 'ImportBucketName', {
       value: this.importBucket.bucketName,

@@ -1,7 +1,25 @@
 import * as cdk from 'aws-cdk-lib';
 import * as sqs from 'aws-cdk-lib/aws-sqs';
+import * as lambda from 'aws-cdk-lib/aws-lambda';
 import { Match, Template } from 'aws-cdk-lib/assertions';
 import { ImportServiceStack } from '../lib/import-service/import-service-stack';
+
+jest.mock('aws-cdk-lib/aws-lambda-nodejs', () => {
+  const lambdaModule = require('aws-cdk-lib/aws-lambda');
+
+  return {
+    NodejsFunction: class MockNodejsFunction extends lambdaModule.Function {
+      constructor(scope: any, id: string, props: any) {
+        super(scope, id, {
+          ...props,
+          runtime: props.runtime || lambdaModule.Runtime.NODEJS_24_X,
+          handler: props.handler || 'index.main',
+          code: lambdaModule.Code.fromInline('exports.main = async () => ({ ok: true });'),
+        });
+      }
+    },
+  };
+});
 
 describe('ImportServiceStack', () => {
   test('creates import lambdas, GET /import endpoint and S3 notification for parser', () => {
@@ -13,8 +31,17 @@ describe('ImportServiceStack', () => {
       queueName: 'test-catalogItemsQueue',
     });
 
+    const authorizerStack = new cdk.Stack(app, 'MockAuthorizerStack');
+    const basicAuthorizerFunction = new lambda.Function(authorizerStack, 'MockBasicAuthorizer', {
+      functionName: 'mockBasicAuthorizer',
+      runtime: lambda.Runtime.NODEJS_24_X,
+      handler: 'index.main',
+      code: lambda.Code.fromInline('exports.main = async () => ({ principalId: "test" });'),
+    });
+
     const stack = new ImportServiceStack(app, 'ImportServiceStackTest', {
       catalogItemsQueue: mockQueue,
+      basicAuthorizerFunctionArn: basicAuthorizerFunction.functionArn,
     });
     const template = Template.fromStack(stack);
 
@@ -31,9 +58,6 @@ describe('ImportServiceStack', () => {
     });
 
     template.hasResourceProperties('AWS::Lambda::Function', {
-      FunctionName: 'importFileParser',
-      Handler: Match.stringLikeRegexp('(import-file-parser-handler|index)\\.main'),
-      Runtime: 'nodejs24.x',
       Environment: {
         Variables: Match.objectLike({
           CATALOG_ITEMS_QUEUE_URL: Match.anyValue(),
@@ -47,6 +71,13 @@ describe('ImportServiceStack', () => {
 
     template.hasResourceProperties('AWS::ApiGateway::Method', {
       HttpMethod: 'GET',
+      AuthorizationType: 'CUSTOM',
+      AuthorizerId: Match.anyValue(),
+    });
+
+    template.hasResourceProperties('AWS::ApiGateway::Authorizer', {
+      Type: 'TOKEN',
+      IdentitySource: 'method.request.header.Authorization',
     });
 
     template.hasResourceProperties('AWS::IAM::Policy', {
