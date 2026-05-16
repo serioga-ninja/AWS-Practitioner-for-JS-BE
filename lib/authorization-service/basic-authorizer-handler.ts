@@ -67,11 +67,13 @@ function getExpectedPassword() {
 export async function main(
   event: APIGatewayTokenAuthorizerEvent,
 ): Promise<APIGatewayAuthorizerResult> {
+  console.log('Received event:', JSON.stringify(event));
   if (!event.authorizationToken) {
     throw new Error('Unauthorized');
   }
 
   const credentials = parseBasicCredentials(event.authorizationToken);
+  console.log('Parsed credentials:', credentials);
 
   if (!credentials) {
     return buildPolicy('anonymous', 'Deny', event.methodArn);

@@ -80,6 +80,24 @@ describe('ImportServiceStack', () => {
       IdentitySource: 'method.request.header.Authorization',
     });
 
+    template.hasResourceProperties('AWS::ApiGateway::GatewayResponse', {
+      ResponseType: 'DEFAULT_4XX',
+      ResponseParameters: Match.objectLike({
+        'gatewayresponse.header.Access-Control-Allow-Origin': "'*'",
+        'gatewayresponse.header.Access-Control-Allow-Headers': "'*'",
+        'gatewayresponse.header.Access-Control-Allow-Methods': "'GET,OPTIONS'",
+      }),
+    });
+
+    template.hasResourceProperties('AWS::ApiGateway::GatewayResponse', {
+      ResponseType: 'DEFAULT_5XX',
+      ResponseParameters: Match.objectLike({
+        'gatewayresponse.header.Access-Control-Allow-Origin': "'*'",
+        'gatewayresponse.header.Access-Control-Allow-Headers': "'*'",
+        'gatewayresponse.header.Access-Control-Allow-Methods': "'GET,OPTIONS'",
+      }),
+    });
+
     template.hasResourceProperties('AWS::IAM::Policy', {
       PolicyDocument: Match.objectLike({
         Statement: Match.arrayWith([
@@ -106,6 +124,11 @@ describe('ImportServiceStack', () => {
     template.hasResourceProperties('AWS::Lambda::Permission', {
       Action: 'lambda:InvokeFunction',
       Principal: 's3.amazonaws.com',
+    });
+
+    template.hasResourceProperties('AWS::Lambda::Permission', {
+      Action: 'lambda:InvokeFunction',
+      Principal: 'apigateway.amazonaws.com',
     });
 
     template.hasResourceProperties('Custom::S3BucketNotifications', {
