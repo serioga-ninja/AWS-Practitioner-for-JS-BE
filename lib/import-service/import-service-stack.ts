@@ -12,6 +12,7 @@ import { NODE_VERSION } from '../const';
 
 export interface ImportServiceStackProps extends cdk.StackProps {
   catalogItemsQueue: sqs.Queue;
+  basicAuthorizerFunctionArn: string;
 }
 
 export class ImportServiceStack extends cdk.Stack {
@@ -92,9 +93,56 @@ export class ImportServiceStack extends cdk.Stack {
       },
     });
 
+    const importedBasicAuthorizerFunction = lambda.Function.fromFunctionArn(
+      this,
+      'ImportedBasicAuthorizerFunction',
+      props.basicAuthorizerFunctionArn,
+    );
+
+    const gatewayCorsResponseHeaders = {
+      'Access-Control-Allow-Origin': "'*'",
+      'Access-Control-Allow-Headers': "'*'",
+      'Access-Control-Allow-Methods': "'GET,OPTIONS'",
+    };
+
+    new apigateway.GatewayResponse(this, 'ImportServiceDefault4xxGatewayResponse', {
+      restApi: api,
+      type: apigateway.ResponseType.DEFAULT_4XX,
+      responseHeaders: gatewayCorsResponseHeaders,
+    });
+
+    new apigateway.GatewayResponse(this, 'ImportServiceDefault5xxGatewayResponse', {
+      restApi: api,
+      type: apigateway.ResponseType.DEFAULT_5XX,
+      responseHeaders: gatewayCorsResponseHeaders,
+    });
+
+    const importTokenAuthorizer = new apigateway.TokenAuthorizer(this, 'ImportTokenAuthorizer', {
+      handler: importedBasicAuthorizerFunction,
+      resultsCacheTtl: cdk.Duration.seconds(0),
+    });
+
+    const importTokenAuthorizerCfn = importTokenAuthorizer.node
+      .defaultChild as apigateway.CfnAuthorizer;
+
+    new lambda.CfnPermission(this, 'ImportTokenAuthorizerInvokePermission', {
+      action: 'lambda:InvokeFunction',
+      functionName: props.basicAuthorizerFunctionArn,
+      principal: 'apigateway.amazonaws.com',
+      sourceArn: cdk.Stack.of(this).formatArn({
+        service: 'execute-api',
+        resource: api.restApiId,
+        arnFormat: cdk.ArnFormat.SLASH_RESOURCE_NAME,
+        resourceName: `authorizers/${importTokenAuthorizerCfn.ref}`,
+      }),
+    });
+
     api.root
       .addResource('import')
-      .addMethod('GET', new apigateway.LambdaIntegration(this.importProductsFile));
+      .addMethod('GET', new apigateway.LambdaIntegration(this.importProductsFile), {
+        authorizer: importTokenAuthorizer,
+        authorizationType: apigateway.AuthorizationType.CUSTOM,
+      });
 
     new cdk.CfnOutput(this, 'ImportBucketName', {
       value: this.importBucket.bucketName,
